@@ -1,11 +1,17 @@
 package chat
 
 import (
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	WrapperHubRunMehtod = "Hub.Run"
 )
 
 func NewHub(handler MessageServiceInterface, logger *logrus.Logger) *Hub {
 	return &Hub{
+		id:         uuid.NewV4(),
 		clients:    make(map[*Client]bool),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
@@ -17,9 +23,7 @@ func NewHub(handler MessageServiceInterface, logger *logrus.Logger) *Hub {
 }
 
 func (h *Hub) registerClient(client *Client) {
-	h.logger.Debugf("Hub register new client [%v]\n", client)
 	h.clients[client] = true
-	h.logger.Debugf("Hub triyng to send all messages from database to current client [%v]", client)
 	messages := h.handler.GetMessageCollection()
 	for _, m := range messages {
 		client.broadcast <- m
@@ -33,17 +37,29 @@ func (h *Hub) broadcastMessageToClients(message []byte) {
 	}
 }
 
+func (h *Hub) Getid() uuid.UUID {
+	return h.id
+}
+
 func (h *Hub) Run() {
 	for {
 		select {
 		case client := <-h.register:
+			h.logger.Debugf("[%s]: Hub {%s} register a new client.", WrapperHubRunMehtod, h.id.String())
 			h.registerClient(client)
 
 		case client := <-h.unregister:
+			h.logger.Debugf("[%s]: Hub {%s} has delete a client.", WrapperHubRunMehtod, h.id.String())
 			delete(h.clients, client)
 
 		case message := <-h.broadcast:
 			h.broadcastMessageToClients(message)
 		}
+	}
+}
+
+func (h *Hub) Terminate() {
+	for c := range h.clients {
+		c.Terminate()
 	}
 }

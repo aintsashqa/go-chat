@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	ErrProcessWrapper              = "MessageService.Process"
-	ErrGetMessageCollectionWrapper = "MessageService.GetMessageCollection"
+	WrapperMessageServiceProcessMethod              = "MessageService.Process"
+	WrapperMessageServiceGetMessageCollectionMethod = "MessageService.GetMessageCollection"
 )
 
 type messageService struct {
@@ -29,19 +29,19 @@ func (h *messageService) Process(input []byte) []byte {
 	var message Message
 
 	if err := json.Unmarshal(input, &message); err != nil {
-		h.logger.Error(errors.Wrap(err, ErrProcessWrapper))
+		h.logger.Error(errors.Wrap(err, WrapperMessageServiceProcessMethod))
 		return []byte{}
 	}
 
 	message.CreatedAt = time.Now().UTC().Unix()
 	if err := h.messageRepository.AddMessage(&message); err != nil {
-		h.logger.Error(errors.Wrap(err, ErrProcessWrapper))
+		h.logger.Error(errors.Wrap(err, WrapperMessageServiceProcessMethod))
 		return []byte{}
 	}
 
 	result, err := json.Marshal(message)
 	if err != nil {
-		h.logger.Error(errors.Wrap(err, ErrProcessWrapper))
+		h.logger.Error(errors.Wrap(err, WrapperMessageServiceProcessMethod))
 		return []byte{}
 	}
 
@@ -53,13 +53,13 @@ func (h *messageService) GetMessageCollection() [][]byte {
 
 	messages, err := h.messageRepository.GetMessageCollection()
 	if err != nil {
-		h.logger.Warn(errors.Wrap(err, ErrGetMessageCollectionWrapper))
+		h.logger.Warn(errors.Wrap(err, WrapperMessageServiceGetMessageCollectionMethod))
 	}
 
 	for _, m := range messages {
 		mtba, err := json.Marshal(m)
 		if err != nil {
-			h.logger.Error(errors.Wrap(err, ErrGetMessageCollectionWrapper))
+			h.logger.Error(errors.Wrap(err, WrapperMessageServiceGetMessageCollectionMethod))
 			break
 		}
 		result = append(result, mtba)

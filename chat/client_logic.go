@@ -7,8 +7,9 @@ import (
 )
 
 const (
-	ErrWritePumpWrapper = "Client.WritePump"
-	ErrReadPumpWrapper  = "Client.ReadPump"
+	WrapperClientWritePumpMethod = "Client.WritePump"
+	WrapperClientReadPumpMethod  = "Client.ReadPump"
+	WrapperClientTerminateMethod = "Client.Terminate"
 )
 
 func NewClient(hub *Hub, ws *websocket.Conn, logger *logrus.Logger) *Client {
@@ -23,6 +24,12 @@ func NewClient(hub *Hub, ws *websocket.Conn, logger *logrus.Logger) *Client {
 
 func (c *Client) Register() {
 	c.hub.register <- c
+}
+
+func (c *Client) Terminate() {
+	c.hub.unregister <- c
+	c.ws.Close()
+	c.logger.Infof("[%s]: Client was closed websocket connection.", WrapperClientTerminateMethod)
 }
 
 func (c *Client) WritePump() {
@@ -40,7 +47,7 @@ func (c *Client) WritePump() {
 
 			w, err := c.ws.NextWriter(websocket.TextMessage)
 			if err != nil {
-				c.logger.Error(errors.Wrap(err, ErrWritePumpWrapper))
+				c.logger.Error(errors.Wrap(err, WrapperClientWritePumpMethod))
 				return
 			}
 
@@ -53,7 +60,7 @@ func (c *Client) WritePump() {
 			}
 
 			if err = w.Close(); err != nil {
-				c.logger.Error(errors.Wrap(err, ErrWritePumpWrapper))
+				c.logger.Error(errors.Wrap(err, WrapperClientWritePumpMethod))
 				return
 			}
 		}
@@ -61,15 +68,12 @@ func (c *Client) WritePump() {
 }
 
 func (c *Client) ReadPump() {
-	defer func() {
-		c.hub.unregister <- c
-		c.ws.Close()
-	}()
+	defer c.Terminate()
 
 	for {
 		_, message, err := c.ws.ReadMessage()
 		if err != nil {
-			c.logger.Error(errors.Wrap(err, ErrReadPumpWrapper))
+			c.logger.Error(errors.Wrap(err, WrapperClientReadPumpMethod))
 			break
 		}
 		c.hub.broadcast <- message
