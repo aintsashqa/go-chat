@@ -14,10 +14,11 @@ import (
 
 const (
 	// Errors
-	ErrNewRedisClientWrapper       = "NewRedisClient"
-	ErrNewMessageRepositoryWrapper = "NewMessageRepository"
-	ErrAddMessageWrapper           = "MessageRepository.AddMessage"
-	ErrGetMessageCollectionWrapper = "MessageRepository.GetMessageCollection"
+	WrapperNewRedisClientMethod                        = "NewRedisClient"
+	WrapperNewMessageRepositoryMethod                  = "NewMessageRepository"
+	WrapperMessageRepositoryAddMessageMethod           = "MessageRepository.AddMessage"
+	WrapperMessageRepositoryGetMessageCollectionMethod = "MessageRepository.GetMessageCollection"
+	WrapperMessageRepositoryGenerateKeyMethod          = "MessageRepository.GenerateKey"
 
 	// Database fields
 	FieldID        = "id"
@@ -34,12 +35,12 @@ type messageRepository struct {
 func newRedisClient(redisURL string) (*redis.Client, error) {
 	options, err := redis.ParseURL(redisURL)
 	if err != nil {
-		return nil, errors.Wrap(err, ErrNewRedisClientWrapper)
+		return nil, errors.Wrap(err, WrapperNewRedisClientMethod)
 	}
 
 	client := redis.NewClient(options)
 	if _, err = client.Ping().Result(); err != nil {
-		return nil, errors.Wrap(err, ErrNewRedisClientWrapper)
+		return nil, errors.Wrap(err, WrapperNewRedisClientMethod)
 	}
 
 	return client, nil
@@ -52,7 +53,7 @@ func NewMessageRepository(redisURL string, logger *logrus.Logger) (chat.MessageR
 
 	client, err := newRedisClient(redisURL)
 	if err != nil {
-		return nil, errors.Wrap(err, ErrNewMessageRepositoryWrapper)
+		return nil, errors.Wrap(err, WrapperNewMessageRepositoryMethod)
 	}
 
 	messageRepository.client = client
@@ -63,13 +64,13 @@ func (r *messageRepository) generateKey(message *chat.Message) string {
 	id := uuid.NewV4()
 	key := fmt.Sprintf("message:%s", id)
 	message.ID = id.String()
-	r.logger.Debugf("MessageRepository generated a database key [%v] for message", key)
+	r.logger.Debugf("[%s]: Generated a database key [%s] for message", WrapperMessageRepositoryGenerateKeyMethod, key)
 	return key
 }
 
 func (r *messageRepository) AddMessage(message *chat.Message) error {
-	r.logger.Debugf("MessageRepository trying to add new message [%v] to database", message)
 	key := r.generateKey(message)
+	r.logger.Debugf("[%s]: Trying to add new message [%+v] to database", WrapperMessageRepositoryAddMessageMethod, message)
 	data := map[string]interface{}{
 		FieldID:        message.ID,
 		FieldAuthor:    message.Author,
@@ -78,33 +79,30 @@ func (r *messageRepository) AddMessage(message *chat.Message) error {
 	}
 	_, err := r.client.HMSet(key, data).Result()
 	if err != nil {
-		return errors.Wrap(err, ErrAddMessageWrapper)
+		return errors.Wrap(err, WrapperMessageRepositoryAddMessageMethod)
 	}
 
 	return nil
 }
 
 func (r *messageRepository) GetMessageCollection() ([]chat.Message, error) {
-	r.logger.Debug("MessageRepository trying to get all messages from database")
 	var messages []chat.Message
-	r.logger.Debug("MessageRepository fetching all keys from database")
 	keys, err := r.client.Keys("message:*").Result()
-	r.logger.Debugf("MessageRepository keys count: %d", len(keys))
 	if err != nil {
-		return messages, errors.Wrap(err, ErrGetMessageCollectionWrapper)
+		return messages, errors.Wrap(err, WrapperMessageRepositoryGetMessageCollectionMethod)
 	}
 
 	for _, k := range keys {
 		var m chat.Message
 		data, err := r.client.HGetAll(k).Result()
 		if err != nil {
-			r.logger.Warn(errors.Wrap(err, ErrGetMessageCollectionWrapper))
+			r.logger.Warn(errors.Wrap(err, WrapperMessageRepositoryGetMessageCollectionMethod))
 			break
 		}
 
 		createdAt, err := strconv.ParseInt(data[FieldCreatedAt], 10, 64)
 		if err != nil {
-			r.logger.Warn(errors.Wrap(err, ErrGetMessageCollectionWrapper))
+			r.logger.Warn(errors.Wrap(err, WrapperMessageRepositoryGetMessageCollectionMethod))
 			break
 		}
 
