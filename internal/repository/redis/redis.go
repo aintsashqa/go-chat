@@ -60,16 +60,16 @@ func NewMessageRepository(redisURL string, logger *logrus.Logger) (chat.MessageR
 	return messageRepository, nil
 }
 
-func (r *messageRepository) generateKey(message *chat.Message) string {
+func (r *messageRepository) generateKey(hubId string, message *chat.Message) string {
 	id := uuid.NewV4()
-	key := fmt.Sprintf("message:%s", id)
+	key := fmt.Sprintf("hub-%s-message:%s", hubId, id)
 	message.ID = id.String()
 	r.logger.Debugf("[%s]: Generated a database key [%s] for message", WrapperMessageRepositoryGenerateKeyMethod, key)
 	return key
 }
 
-func (r *messageRepository) AddMessage(message *chat.Message) error {
-	key := r.generateKey(message)
+func (r *messageRepository) AddMessage(hubId string, message *chat.Message) error {
+	key := r.generateKey(hubId, message)
 	r.logger.Debugf("[%s]: Trying to add new message [%+v] to database", WrapperMessageRepositoryAddMessageMethod, message)
 	data := map[string]interface{}{
 		FieldID:        message.ID,
@@ -85,9 +85,10 @@ func (r *messageRepository) AddMessage(message *chat.Message) error {
 	return nil
 }
 
-func (r *messageRepository) GetMessageCollection() ([]chat.Message, error) {
+func (r *messageRepository) GetMessageCollection(hubId string) ([]chat.Message, error) {
 	var messages []chat.Message
-	keys, err := r.client.Keys("message:*").Result()
+	pattern := fmt.Sprintf("hub-%s-message:*", hubId)
+	keys, err := r.client.Keys(pattern).Result()
 	if err != nil {
 		return messages, errors.Wrap(err, WrapperMessageRepositoryGetMessageCollectionMethod)
 	}

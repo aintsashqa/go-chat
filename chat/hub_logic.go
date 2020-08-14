@@ -24,14 +24,14 @@ func NewHub(handler MessageServiceInterface, logger *logrus.Logger) *Hub {
 
 func (h *Hub) registerClient(client *Client) {
 	h.clients[client] = true
-	messages := h.handler.GetMessageCollection()
+	messages := h.handler.GetMessageCollection(h.id)
 	for _, m := range messages {
 		client.broadcast <- m
 	}
 }
 
 func (h *Hub) broadcastMessageToClients(message []byte) {
-	result := h.handler.Process(message)
+	result := h.handler.Process(h.id, message)
 	for client := range h.clients {
 		client.broadcast <- result
 	}

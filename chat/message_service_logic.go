@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 )
 
@@ -25,7 +26,7 @@ func NewMessageService(messageRepository MessageRepositoryInterface, logger *log
 	}
 }
 
-func (h *messageService) Process(input []byte) []byte {
+func (h *messageService) Process(id uuid.UUID, input []byte) []byte {
 	var message Message
 
 	if err := json.Unmarshal(input, &message); err != nil {
@@ -34,7 +35,7 @@ func (h *messageService) Process(input []byte) []byte {
 	}
 
 	message.CreatedAt = time.Now().UTC().Unix()
-	if err := h.messageRepository.AddMessage(&message); err != nil {
+	if err := h.messageRepository.AddMessage(id.String(), &message); err != nil {
 		h.logger.Error(errors.Wrap(err, WrapperMessageServiceProcessMethod))
 		return []byte{}
 	}
@@ -48,10 +49,10 @@ func (h *messageService) Process(input []byte) []byte {
 	return result
 }
 
-func (h *messageService) GetMessageCollection() [][]byte {
+func (h *messageService) GetMessageCollection(id uuid.UUID) [][]byte {
 	var result [][]byte
 
-	messages, err := h.messageRepository.GetMessageCollection()
+	messages, err := h.messageRepository.GetMessageCollection(id.String())
 	if err != nil {
 		h.logger.Warn(errors.Wrap(err, WrapperMessageServiceGetMessageCollectionMethod))
 	}

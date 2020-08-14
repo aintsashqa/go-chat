@@ -40,11 +40,11 @@ type Message struct {
 }
 
 type MessageServiceInterface interface {
-	Process([]byte) []byte
-	GetMessageCollection() [][]byte
+	Process(uuid.UUID, []byte) []byte
+	GetMessageCollection(uuid.UUID) [][]byte
 }
 
 type MessageRepositoryInterface interface {
-	AddMessage(*Message) error
-	GetMessageCollection() ([]Message, error)
+	AddMessage(string, *Message) error
+	GetMessageCollection(string) ([]Message, error)
 }
