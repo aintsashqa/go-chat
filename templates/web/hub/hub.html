@@ -1,0 +1,50 @@
+{{ define "content" }}
+<p>
+    <button class="btn btn-primary btn-block" type="button" data-toggle="collapse" data-target="#invite-to-hub-collapse" aria-expanded="false">
+      Invite to hub link
+    </button>
+</p>
+<div class="collapse" id="invite-to-hub-collapse">
+    <div class="card card-body">
+        <p class="user-select-all">http://localhost/hub/invite/{{ .HubID }}</p>
+    </div>
+</div>
+<div class="input-group mb-3 mt-3">
+    <input id="input" type="text" class="form-control" placeholder="Write message here..." />
+    <div class="input-group-append">
+        <button class="btn btn-outline-primary" type="button" onclick="send()">Enter</button>
+    </div>
+</div>
+<div class="p-2" id="output"></div>
+{{ end }}
+
+{{ define "javascript" }}
+<script>
+    var input = document.getElementById("input")
+    var output = document.getElementById("output")
+    var socket = new WebSocket("ws://localhost/ws?hub_id={{ .HubID }}")
+
+    socket.onopen = function() {
+        output.innerHTML += "<p class=\"lead\">You connected to chat!</p>"
+    }
+
+    socket.onmessage = function(e) {
+        message = JSON.parse(e.data)
+        console.log(message)
+        output.innerHTML += "<p><b>" + message.author + "</b> [" + new Date(message.created_at * 1000).toLocaleString("ru", {
+            day: "numeric",
+            month: "numeric",
+            year: "numeric"
+        }) + "]: " + message.content + "</p>"
+    }
+
+    function send() {
+        message = JSON.stringify({
+            author: "Author",
+            content: input.value
+        })
+        socket.send(message)
+        input.value = ""
+    }
+</script>
+{{ end }}
